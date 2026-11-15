@@ -1,5 +1,5 @@
 
-name: Factopedia Video Pilot
+name: Factopedia Voyager Documentary Trial
 
 on:
   workflow_dispatch:
@@ -10,13 +10,13 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     steps:
       - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -29,29 +29,332 @@ jobs:
       - name: Create HyperFrames project
         run: |
           npx --yes hyperframes init voyager-pilot \
-            --example warm-grain \
+            --example blank \
             --resolution portrait \
             --skip-skills \
             --non-interactive
 
-      - name: Check rendering environment
+      - name: Download Voyager spacecraft artwork
         run: |
-          cd voyager-pilot
-          npx hyperframes doctor
-          npx hyperframes lint
+          mkdir -p voyager-pilot/assets
+          curl -L --fail \
+            -A "FactopediaVideoPilot/1.0" \
+            "https://commons.wikimedia.org/wiki/Special:Redirect/file/Voyager%20spacecraft%20model.png" \
+            -o voyager-pilot/assets/voyager.png
 
-      - name: Render video
+      - name: Create narration script
+        run: |
+          cat > voyager-pilot/script.txt <<'EOF'
+          In 1977, humanity launched a machine into the dark.
+
+          Voyager One was built to study Jupiter and Saturn, but it carried something extraordinary: a golden record, filled with sounds and images from Earth.
+
+          And it kept going.
+
+          In August 2012, NASA confirmed that Voyager One had crossed the heliopause, the boundary where the Sun's influence gives way to interstellar space.
+
+          Its tiny radio signal still races back at the speed of light, taking many hours to reach us.
+
+          And on board is a message from our world, drifting through a place no human has ever visited.
+          EOF
+
+      - name: Generate documentary narration
         run: |
           cd voyager-pilot
-          npx hyperframes render \
-            --output ../voyager-pilot.mp4 \
+          npx --yes hyperframes tts script.txt \
+            --speed 0.92 \
+            --output assets/narration.wav
+
+      - name: Create animated documentary
+        run: |
+          cat > voyager-pilot/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=1080,height=1920">
+          <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+          <style>
+          * { box-sizing:border-box; }
+          html,body {
+            margin:0; padding:0; width:1080px; height:1920px;
+            overflow:hidden; background:#030611;
+            font-family:Arial,Helvetica,sans-serif; color:white;
+          }
+          #root {
+            position:relative; width:1080px; height:1920px;
+            overflow:hidden; background:#030611;
+          }
+          .clip { position:absolute; inset:0; }
+          .scene {
+            position:absolute; inset:0; overflow:hidden;
+            opacity:0; padding:100px 76px;
+            background:
+              radial-gradient(ellipse at 50% 40%,#172a4a 0%,#091323 42%,#030611 78%);
+          }
+          .stars {
+            position:absolute; inset:0; opacity:.65;
+            background-image:
+              radial-gradient(2px 2px at 10% 15%,#fff 50%,transparent 100%),
+              radial-gradient(2px 2px at 78% 22%,#fff 50%,transparent 100%),
+              radial-gradient(3px 3px at 42% 67%,#fff 50%,transparent 100%),
+              radial-gradient(2px 2px at 88% 78%,#fff 50%,transparent 100%),
+              radial-gradient(2px 2px at 23% 86%,#fff 50%,transparent 100%);
+            background-size:370px 410px;
+          }
+          .brand {
+            position:absolute; top:65px; left:76px;
+            font-size:25px; letter-spacing:8px;
+            color:#9bb7da; font-weight:bold;
+          }
+          .eyebrow {
+            font-size:24px; letter-spacing:6px;
+            text-transform:uppercase; color:#8bb7e8;
+            font-weight:bold; margin-bottom:35px;
+          }
+          h1 {
+            font-size:100px; line-height:.98;
+            letter-spacing:-5px; margin:0;
+            font-weight:900; text-transform:uppercase;
+          }
+          h2 {
+            font-size:68px; line-height:1.03;
+            letter-spacing:-2px; margin:0;
+            text-transform:uppercase;
+          }
+          .sub {
+            font-size:32px; line-height:1.4;
+            color:#c3d0e1; margin-top:35px;
+          }
+          .bottom {
+            position:absolute; bottom:110px; left:76px; right:76px;
+            font-size:34px; line-height:1.25;
+            font-weight:bold; text-transform:uppercase;
+            border-left:5px solid #65c8ff; padding-left:25px;
+          }
+          .year {
+            font-size:180px; font-weight:900; color:#fff;
+            letter-spacing:-12px; margin-top:120px;
+            text-shadow:0 0 55px #318bff;
+          }
+          .ship {
+            position:absolute; width:850px; height:auto;
+            top:390px; left:115px;
+            filter:drop-shadow(0 0 35px #6c9dce);
+          }
+          .gold-disc {
+            position:absolute; width:420px; height:420px;
+            left:330px; top:470px; border-radius:50%;
+            background:
+              radial-gradient(circle,#d5b65c 0 8%,#7d5b20 9% 12%,
+              #e9ce73 13% 17%,#a27a30 18% 22%,
+              #e9ce73 23% 45%,#715020 46% 48%,#caa94e 49% 100%);
+            box-shadow:0 0 80px #bd923b88;
+          }
+          .orbit {
+            position:absolute; border:2px solid #5299df66;
+            border-radius:50%; width:760px; height:760px;
+            left:160px; top:430px;
+          }
+          .sun {
+            position:absolute; width:125px; height:125px;
+            left:477px; top:747px; border-radius:50%;
+            background:radial-gradient(circle,#fff8c7,#ffba45 40%,#ed5b24 75%,transparent);
+            box-shadow:0 0 100px #ff9e36;
+          }
+          .bubble {
+            position:absolute; width:820px; height:820px;
+            left:130px; top:400px; border-radius:50%;
+            border:5px solid #42baff99;
+            box-shadow:0 0 45px #248dff44,inset 0 0 75px #248dff22;
+          }
+          .bubble:after {
+            content:""; position:absolute; inset:25px;
+            border:2px dashed #6abaff66; border-radius:50%;
+          }
+          .probe {
+            position:absolute; width:30px; height:30px;
+            border-radius:50%; background:#fff;
+            box-shadow:0 0 35px 15px #58baff;
+            left:770px; top:650px;
+          }
+          .path {
+            position:absolute; height:5px; width:520px;
+            background:linear-gradient(90deg,#ffc65c,#5bbcff);
+            top:815px; left:270px; transform:rotate(-22deg);
+            transform-origin:left;
+          }
+          .signal {
+            position:absolute; left:480px; top:750px;
+            width:120px; height:120px; border:4px solid #75c9ff;
+            border-radius:50%;
+            box-shadow:0 0 30px #43aaff;
+          }
+          .signal:before,.signal:after {
+            content:""; position:absolute; border:3px solid #75c9ff;
+            border-radius:50%; inset:-45px;
+          }
+          .signal:after { inset:-90px; opacity:.5; }
+          .earth {
+            position:absolute; width:190px; height:190px;
+            left:420px; top:650px; border-radius:50%;
+            background:radial-gradient(circle at 35% 35%,#a8e5ff,#237ac5 45%,#061a4a 75%);
+            box-shadow:0 0 70px #278bff88;
+          }
+          .small-label {
+            font-size:26px; letter-spacing:4px; color:#9fc9ef;
+            text-transform:uppercase; font-weight:bold;
+          }
+          .footer {
+            position:absolute; bottom:55px; left:76px;
+            font-size:19px; letter-spacing:4px; color:#72869f;
+          }
+          </style>
+          </head>
+          <body>
+          <div id="root" data-composition-id="voyager-trial"
+               data-start="0" data-duration="52"
+               data-width="1080" data-height="1920">
+
+            <audio class="clip" src="assets/narration.wav"
+              data-start="0" data-duration="52" data-track-index="0"></audio>
+
+            <div class="clip" data-start="0" data-duration="52"
+                 data-track-index="1">
+
+              <section class="scene" id="s1">
+                <div class="stars"></div>
+                <div class="brand">FACTOPEDIA / DEEP SPACE</div>
+                <div class="eyebrow" style="margin-top:280px">A mission beyond imagination</div>
+                <div class="year">1977</div>
+                <h1 style="font-size:83px;margin-top:25px">
+                  THE SPACECRAFT<br>THAT REFUSES<br>TO DIE
+                </h1>
+                <div class="sub">One machine. One extraordinary journey.</div>
+                <div class="bottom">Humanity sent a message into the dark.</div>
+                <div class="footer">FACTOPEDIA ORIGINAL DOCUMENTARY</div>
+              </section>
+
+              <section class="scene" id="s2">
+                <div class="stars"></div>
+                <div class="brand">FACTOPEDIA / THE VOYAGER STORY</div>
+                <div class="eyebrow" style="margin-top:190px">September 5, 1977</div>
+                <h2>BUILT TO<br>EXPLORE.</h2>
+                <img class="ship" src="assets/voyager.png">
+                <div class="sub" style="position:absolute;top:1320px">
+                  Jupiter. Saturn. Then a journey no spacecraft had made before.
+                </div>
+                <div class="bottom">But Voyager carried something more than science.</div>
+                <div class="footer">SPACECRAFT ARTIST CONCEPT / NASA-JPL</div>
+              </section>
+
+              <section class="scene" id="s3">
+                <div class="stars"></div>
+                <div class="brand">FACTOPEDIA / THE GOLDEN RECORD</div>
+                <div class="eyebrow" style="margin-top:220px">A message from Earth</div>
+                <h2>WE SENT<br>OUR STORY.</h2>
+                <div class="orbit"></div>
+                <div class="gold-disc"></div>
+                <div class="sub" style="position:absolute;top:1240px">
+                  Sounds. Music. Greetings. Images of life on our planet.
+                </div>
+                <div class="bottom">A time capsule for whoever might find it.</div>
+                <div class="footer">THE GOLDEN RECORD / NASA</div>
+              </section>
+
+              <section class="scene" id="s4">
+                <div class="stars"></div>
+                <div class="brand">FACTOPEDIA / BEYOND THE SUN</div>
+                <div class="eyebrow" style="margin-top:190px">August 2012</div>
+                <h2>IT CROSSED<br>THE EDGE.</h2>
+                <div class="bubble"></div>
+                <div class="sun"></div>
+                <div class="path"></div>
+                <div class="probe" id="probe"></div>
+                <div class="small-label" style="position:absolute;top:1200px;left:120px">
+                  HELIOSPHERE
+                </div>
+                <div class="small-label" style="position:absolute;top:1260px;right:100px">
+                  INTERSTELLAR SPACE
+                </div>
+                <div class="sub" style="position:absolute;top:1380px">
+                  Voyager 1 crossed the heliopause — the boundary of the Sun's influence.
+                </div>
+                <div class="bottom">Humanity's first confirmed journey into interstellar space.</div>
+                <div class="footer">SCHEMATIC EXPLANATION / NOT TO SCALE</div>
+              </section>
+
+              <section class="scene" id="s5">
+                <div class="stars"></div>
+                <div class="brand">FACTOPEDIA / A SIGNAL FROM HOME</div>
+                <div class="eyebrow" style="margin-top:220px">Across the unimaginable distance</div>
+                <h2>A WHISPER<br>FROM EARTH.</h2>
+                <div class="earth"></div>
+                <div class="signal"></div>
+                <div class="sub" style="position:absolute;top:1110px">
+                  Its radio messages travel at the speed of light. They still take many hours to arrive.
+                </div>
+                <div class="bottom">A tiny machine. A message from an entire world.</div>
+                <div class="footer">FACTOPEDIA / KEEP EXPLORING</div>
+              </section>
+
+            </div>
+          </div>
+
+          <script>
+          const tl = gsap.timeline({paused:true});
+
+          tl.to("#s1",{opacity:1,duration:0.8},0)
+            .from("#s1 .year",{opacity:0,scale:1.3,duration:1.2},0.5)
+            .from("#s1 h1",{opacity:0,y:90,duration:1},1.5)
+            .to("#s1",{opacity:0,duration:0.7},6.3)
+
+            .to("#s2",{opacity:1,duration:0.8},7)
+            .from("#s2 .ship",{opacity:0,scale:0.65,y:100,duration:2},7.5)
+            .from("#s2 h2",{opacity:0,x:-80,duration:1},8)
+            .to("#s2 .ship",{y:-45,rotation:2,duration:7},9)
+            .to("#s2",{opacity:0,duration:0.7},16.3)
+
+            .to("#s3",{opacity:1,duration:0.8},17)
+            .from("#s3 .gold-disc",{scale:0.2,rotation:-90,opacity:0,duration:1.8},17.5)
+            .to("#s3 .gold-disc",{rotation:18,duration:8},19)
+            .from("#s3 h2",{opacity:0,y:70,duration:1},18)
+            .to("#s3",{opacity:0,duration:0.7},28.3)
+
+            .to("#s4",{opacity:1,duration:0.8},29)
+            .from("#s4 h2",{opacity:0,x:-70,duration:1},29.5)
+            .from("#s4 .bubble",{scale:0.6,opacity:0,duration:1.5},30)
+            .from("#s4 .probe",{x:-420,y:180,duration:5,ease:"power2.out"},31)
+            .to("#s4",{opacity:0,duration:0.7},39.3)
+
+            .to("#s5",{opacity:1,duration:0.8},40)
+            .from("#s5 .earth",{scale:0.2,opacity:0,duration:1.5},40.5)
+            .from("#s5 .signal",{scale:0.2,opacity:0,duration:1.5},41)
+            .from("#s5 h2",{opacity:0,y:70,duration:1},41)
+            .to("#s5 .signal",{scale:1.5,opacity:0.4,duration:5},44);
+
+          window.__timelines = window.__timelines || {};
+          window.__timelines["voyager-trial"] = tl;
+          </script>
+          HTML
+
+      - name: Validate composition
+        run: |
+          cd voyager-pilot
+          npx --yes hyperframes lint
+
+      - name: Render documentary
+        run: |
+          cd voyager-pilot
+          npx --yes hyperframes render \
+            --output ../FACTOPEDIA-VOYAGER-TRIAL.mp4 \
             --fps 30 \
-            --quality draft \
-            --workers 1
+            --quality standard \
+            --workers 2
 
-      - name: Upload finished video
+      - name: Upload documentary
         uses: actions/upload-artifact@v4
         with:
-          name: factopedia-video-pilot
-          path: voyager-pilot.mp4
+          name: FACTOPEDIA-VOYAGER-TRIAL
+          path: FACTOPEDIA-VOYAGER-TRIAL.mp4
           retention-days: 3
