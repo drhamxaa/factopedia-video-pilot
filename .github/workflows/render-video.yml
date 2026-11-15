@@ -1,0 +1,57 @@
+
+name: Factopedia Video Pilot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Create HyperFrames project
+        run: |
+          npx --yes hyperframes init voyager-pilot \
+            --example warm-grain \
+            --resolution portrait \
+            --skip-skills \
+            --non-interactive
+
+      - name: Check rendering environment
+        run: |
+          cd voyager-pilot
+          npx hyperframes doctor
+          npx hyperframes lint
+
+      - name: Render video
+        run: |
+          cd voyager-pilot
+          npx hyperframes render \
+            --output ../voyager-pilot.mp4 \
+            --fps 30 \
+            --quality draft \
+            --workers 1
+
+      - name: Upload finished video
+        uses: actions/upload-artifact@v4
+        with:
+          name: factopedia-video-pilot
+          path: voyager-pilot.mp4
+          retention-days: 3
