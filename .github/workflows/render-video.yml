@@ -57,7 +57,17 @@ jobs:
 
           And on board is a message from our world, drifting through a place no human has ever visited.
           EOF
+      - name: Install Python speech dependencies
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
+      - name: Install Kokoro TTS
+        run: |
+          python -m venv "$RUNNER_TEMP/kokoro-venv"
+          "$RUNNER_TEMP/kokoro-venv/bin/pip" install --upgrade pip
+          "$RUNNER_TEMP/kokoro-venv/bin/pip" install kokoro-onnx soundfile
+          echo "HYPERFRAMES_PYTHON=$RUNNER_TEMP/kokoro-venv/bin/python" >> "$GITHUB_ENV"
       - name: Generate documentary narration
         run: |
           cd voyager-pilot
